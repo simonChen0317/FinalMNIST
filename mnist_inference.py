@@ -17,22 +17,30 @@ def get_weight_variable(shape, regularizer):
     #这是自定义的集合，不在TensorFlow自动管理的集合列表中。
     if regularizer !=None:
         tf.add_to_collection('losses', regularizer(weights))
-    return  weights
+    return weights
+
+def get_biase_variable(shape):
+    biases = tf.get_variable("biases", shape, initializer=tf.constant_initializer(0.0))
+    return biases
 
 #定义前向传播的过程。
+#regularizer
 def inference(input_tensor, regularizer):
     #声明第一层神经网络的变量并完成前向传播过程。
     with tf.variable_scope('layer1'):
         #这里通过tf.get_variable或tf.Variable没有本质区别，因为在训练或者测试中没有在同一个程序中多次调用这个函数。
         #如果在同一个程序中多次调用，在第一次调用之后需要将reuse参数设置为True
         weights = get_weight_variable([INPUT_NODE, LAYER1_NODE], regularizer)
-        biases = tf.get_variable("biases", [LAYER1_NODE], initializer=tf.constant_initializer(0.0))
+        # biases = tf.get_variable("biases", [LAYER1_NODE], initializer=tf.constant_initializer(0.0))
+        biases = get_biase_variable([LAYER1_NODE])
+        #使用relu激活函数去线性化。
         layer1 = tf.nn.relu(tf.matmul(input_tensor, weights) + biases)
 
     #类似的声明第二层神经网络的变量并完成前向传播过程。
     with tf.variable_scope('layer2'):
         weights = get_weight_variable([LAYER1_NODE,OUTPUT_NODE], regularizer)
-        biases = tf.get_variable("biases", [OUTPUT_NODE], initializer=tf.constant_initializer(0.0))
+        # biases = tf.get_variable("biases", [OUTPUT_NODE], initializer=tf.constant_initializer(0.0))
+        biases = get_biase_variable([OUTPUT_NODE])
         layer2 = tf.matmul(layer1, weights) + biases
 
     #返回前向传播的结果。
