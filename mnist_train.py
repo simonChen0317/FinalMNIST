@@ -20,6 +20,7 @@ MOVING_AVERAGE_DECAY = 0.99
 MODEL_SAVE_PATH = "save_model/"
 MODEL_NAME = "model.ckpt"
 
+
 def train(mnist):
     #定义输入输出placeholder
     #将处理输入数据的计算都放到名称为“input”的命名空间下。
@@ -46,6 +47,7 @@ def train(mnist):
         cross_entropy_mean = tf.reduce_mean(cross_entropy)
         #计算总的损失函数，包括交叉熵损失函数和带L2正则化的损失函数
         loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))#tf.get_collection('losses')获取正则化weights之后的数据
+        tf.summary.scalar("loss", loss)
 
     #定义学习率、优化方法以及每轮训练需要执行的操作都放在名字为“train_step”的命名空间下。
     with tf.name_scope("train_step"):
@@ -55,15 +57,19 @@ def train(mnist):
     with tf.control_dependencies([train_step, variable_averages_op]):
         train_op = tf.no_op(name='train')
 
+    #合并所有的summary
+    merged = tf.summary.merge_all()
+
     #初始化TensorFlow持久化类。
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.initialize_all_variables())
-
+        # 将当前的计算图输出到TensorBoard日志文件中。
+        writer = tf.summary.FileWriter("logs", sess.graph)
         #在训练过程中不再测试模型在验证数据上的表现，验证和测试的过程将由一个独立的程序来完成。
         for i in range(TRAINING_STEPS):
             xs, ys = mnist.train.next_batch(BATCH_SIZE)
-            _, loss_value, step = sess.run([train_op, loss, global_step], feed_dict={x: xs, y_: ys})
+            _, loss_value, step, summary = sess.run([train_op, loss, global_step, merged], feed_dict={x: xs, y_: ys})
             #每1000论保存一次模型。
             if i % 1000 == 0:
 
@@ -81,9 +87,7 @@ def train(mnist):
                 print("After %d training step(s), loss on training batch is %g." % (step, loss_value))
                 #保存当前模型。注意这里给出了global_step参数，这样可以让每个被保存的模型的文件名末尾加上训练的轮数，比如“model.ckpt-1000”表示训练1000轮后得到的模型。
                 saver.save(sess, os.path.join(MODEL_SAVE_PATH, MODEL_NAME), global_step=global_step)
-
-        #将当前的计算图输出到TensorBoard日志文件中。
-        writer = tf.summary.FileWriter("logs", tf.get_default_graph())
+            writer.add_summary(summary, i)
         writer.close()
 
 def main(argv = None):

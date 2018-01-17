@@ -23,6 +23,19 @@ def get_biase_variable(shape):
     biases = tf.get_variable("biases", shape, initializer=tf.constant_initializer(0.0))
     return biases
 
+#参数概要，计算var的平均值、标准差、最大值、最小值和直方图
+def variable_summaries(var):
+    with tf.name_scope('summaries'):
+        mean = tf.reduce_mean(var)
+        tf.summary.scalar('mean', mean)#平均值，tf.summary.scalar()这个方法是记录一个值，并且可以给这个值起一个名字，第一个参数是起的名字
+        with tf.name_scope('stddev'):
+            stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+        tf.summary.scalar('stddev', stddev)#标准差
+        tf.summary.scalar('max', tf.reduce_max(var))#最大值
+        tf.summary.scalar('min', tf.reduce_min(var))#最小值
+        tf.summary.histogram('histogram', var)#直方图
+
+
 #定义前向传播的过程。
 #regularizer
 def inference(input_tensor, regularizer):
@@ -30,17 +43,25 @@ def inference(input_tensor, regularizer):
     with tf.variable_scope('layer1'):
         #这里通过tf.get_variable或tf.Variable没有本质区别，因为在训练或者测试中没有在同一个程序中多次调用这个函数。
         #如果在同一个程序中多次调用，在第一次调用之后需要将reuse参数设置为True
-        weights = get_weight_variable([INPUT_NODE, LAYER1_NODE], regularizer)
+        with tf.name_scope("weight"):
+            weights = get_weight_variable([INPUT_NODE, LAYER1_NODE], regularizer)
+            variable_summaries(weights)
         # biases = tf.get_variable("biases", [LAYER1_NODE], initializer=tf.constant_initializer(0.0))
-        biases = get_biase_variable([LAYER1_NODE])
+        with tf.name_scope('biases'):
+            biases = get_biase_variable([LAYER1_NODE])
+            variable_summaries(biases)
         #使用relu激活函数去线性化。
         layer1 = tf.nn.relu(tf.matmul(input_tensor, weights) + biases)
 
     #类似的声明第二层神经网络的变量并完成前向传播过程。
     with tf.variable_scope('layer2'):
-        weights = get_weight_variable([LAYER1_NODE,OUTPUT_NODE], regularizer)
-        # biases = tf.get_variable("biases", [OUTPUT_NODE], initializer=tf.constant_initializer(0.0))
-        biases = get_biase_variable([OUTPUT_NODE])
+        with tf.name_scope("weights"):
+            weights = get_weight_variable([LAYER1_NODE, OUTPUT_NODE], regularizer)
+            variable_summaries(weights)
+        with tf.name_scope("biases"):
+            # biases = tf.get_variable("biases", [OUTPUT_NODE], initializer=tf.constant_initializer(0.0))
+            biases = get_biase_variable([OUTPUT_NODE])
+            variable_summaries(biases)
         layer2 = tf.matmul(layer1, weights) + biases
 
     #返回前向传播的结果。
